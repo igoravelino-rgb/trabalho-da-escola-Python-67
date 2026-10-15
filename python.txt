@@ -1,0 +1,233 @@
+from datetime import datetime
+
+# --- BASE DE DADOS (Simulada em memória) ---
+laboratorios_disponiveis = [
+    {"id": 1, "nome": "Laboratório de Informática 01"},
+    {"id": 2, "nome": "Laboratório de Informática 02"},
+    {"id": 3, "nome": "Laboratório de Física"},
+    {"id": 4, "nome": "Laboratório de Química"},
+]
+
+# Lista para armazenar as reservas ativas
+reservas = []
+proximo_id_reserva = 1
+
+
+# --- FUNÇÕES DE VALIDAÇÃO E SUPORTE ---
+
+def buscar_laboratorio_por_id(lab_id):
+    """Retorna o laboratório se encontrar, ou None."""
+    for lab in laboratorios_disponiveis:
+        if lab["id"] == lab_id:
+            return lab
+    return None
+
+
+def laboratorio_esta_ocupado(lab_id, data, horario):
+    """Verifica se já existe uma reserva no mesmo laboratório, data e horário."""
+    for reserva in reservas:
+        if (reserva["lab_id"] == lab_id and 
+            reserva["data"] == data and 
+            reserva["horario"] == horario):
+            return True
+    return False
+
+
+def validar_data_formato(data_str):
+    """Valida se a data está no formato DD/MM/AAAA."""
+    try:
+        datetime.strptime(data_str, "%d/%m/%Y")
+        return True
+    except ValueError:
+        return False
+
+
+def validar_horario_formato(horario_str):
+    """Valida se o horário está no formato HH:MM."""
+    try:
+        datetime.strptime(horario_str, "%H:%M")
+        return True
+    except ValueError:
+        return False
+
+
+# --- FUNÇÕES DAS FUNCIONALIDADES OBRIGATÓRIAS ---
+
+def listar_laboratorios():
+    """1. Apresenta os laboratórios disponíveis."""
+    print("\n--- LABORATÓRIOS DISPONÍVEIS ---")
+    for lab in laboratorios_disponiveis:
+        print(f"ID: {lab['id']} | Nome: {lab['nome']}")
+
+
+def verificar_disponibilidade():
+    """3. Confere se o laboratório já está reservado na data e horário."""
+    print("\n--- VERIFICAR DISPONIBILIDADE ---")
+    listar_laboratorios()
+    
+    try:
+        lab_id = int(input("\nInforme o ID do laboratório: "))
+    except ValueError:
+        print("Erro: ID inválido.")
+        return False, None, None, None
+
+    lab = buscar_laboratorio_por_id(lab_id)
+    if not lab:
+        print("Erro: Laboratório não encontrado.")
+        return False, None, None, None
+
+    data = input("Informe a data (DD/MM/AAAA): ").strip()
+    if not validar_data_formato(data):
+        print("Erro: Formato de data inválido. Use DD/MM/AAAA.")
+        return False, None, None, None
+
+    horario = input("Informe o horário (HH:MM): ").strip()
+    if not validar_horario_formato(horario):
+        print("Erro: Formato de horário inválido. Use HH:MM.")
+        return False, None, None, None
+
+    if laboratorio_esta_ocupado(lab_id, data, horario):
+        print(f"\n Indisponível: O {lab['nome']} já está reservado para {data} às {horario}.")
+        return False, lab_id, data, horario
+    else:
+        print(f"\n Disponível: O {lab['nome']} está livre em {data} às {horario}.")
+        return True, lab_id, data, horario
+
+
+def fazer_e_confirmar_reserva():
+    """2 e 4. Informa dados, verifica disponibilidade e confirma a reserva."""
+    global proximo_id_reserva
+    
+    print("\n--- FAZER RESERVA ---")
+    disponivel, lab_id, data, horario = verificar_disponibilidade()
+
+    if not disponivel:
+        print("Não foi possível prosseguir com a reserva.")
+        return
+
+    professor = input("\nNome do Professor: ").strip()
+    turma = input("Nome/Código da Turma: ").strip()
+
+    if not professor or not turma:
+        print("Erro: O nome do professor e da turma são obrigatórios.")
+        return
+
+    lab = buscar_laboratorio_por_id(lab_id)
+
+    # Registro da reserva (Confirmar Reserva)
+    nova_reserva = {
+        "id_reserva": proximo_id_reserva,
+        "lab_id": lab_id,
+        "lab_nome": lab["nome"],
+        "professor": professor,
+        "turma": turma,
+        "data": data,
+        "horario": horario
+    }
+
+    reservas.append(nova_reserva)
+    print(f"\n Reserva #{proximo_id_reserva} confirmada com sucesso para o {lab['nome']}!")
+    proximo_id_reserva += 1
+
+
+def listar_reservas():
+    """5. Mostra todas as reservas cadastradas."""
+    print("\n--- TODAS AS RESERVAS CADASTRADAS ---")
+    if not reservas:
+        print("Nenhuma reserva cadastrada até o momento.")
+        return
+
+    for r in reservas:
+        print(f"ID Reserva: {r['id_reserva']} | Lab: {r['lab_nome']} | Data: {r['data']} às {r['horario']} | Prof: {r['professor']} | Turma: {r['turma']}")
+
+
+def consultar_reserva():
+    """6. Mostra as informações de uma reserva específica."""
+    print("\n--- CONSULTAR RESERVA ---")
+    if not reservas:
+        print("Nenhuma reserva cadastrada.")
+        return
+
+    try:
+        reserva_id = int(input("Informe o ID da reserva: "))
+    except ValueError:
+        print("Erro: Digite um número válido.")
+        return
+
+    for r in reservas:
+        if r["id_reserva"] == reserva_id:
+            print("\n--- DETALHES DA RESERVA ---")
+            print(f"ID Reserva: {r['id_reserva']}")
+            print(f"Laboratório: {r['lab_nome']}")
+            print(f"Professor:   {r['professor']}")
+            print(f"Turma:       {r['turma']}")
+            print(f"Data:        {r['data']}")
+            print(f"Horário:     {r['horario']}")
+            return
+
+    print(f"Reserva com ID {reserva_id} não encontrada.")
+
+
+def cancelar_reserva():
+    """7. Cancela uma reserva e libera o horário."""
+    print("\n--- CANCELAR RESERVA ---")
+    if not reservas:
+        print("Nenhuma reserva cadastrada.")
+        return
+
+    try:
+        reserva_id = int(input("Informe o ID da reserva a cancelar: "))
+    except ValueError:
+        print("Erro: Digite um número válido.")
+        return
+
+    for i, r in enumerate(reservas):
+        if r["id_reserva"] == reserva_id:
+            reservas.pop(i)
+            print(f"\n Reserva #{reserva_id} cancelada com sucesso! Horário liberado.")
+            return
+
+    print(f"Reserva com ID {reserva_id} não encontrada.")
+
+
+# --- MENU PRINCIPAL ---
+
+def menu_principal():
+    """Exibe o menu e executa a opção escolhida pelo usuário."""
+    while True:
+        print("\n====================================")
+        print("   SISTEMA DE RESERVA DE LABS")
+        print("====================================")
+        print("1. Listar Laboratórios")
+        print("2. Fazer e Confirmar Reserva")
+        print("3. Verificar Disponibilidade")
+        print("4. Listar Reservas Cadastradas")
+        print("5. Consultar Reserva Específica")
+        print("6. Cancelar Reserva")
+        print("7. Sair")
+        print("====================================")
+
+        opcao = input("Escolha uma opção (1-7): ").strip()
+
+        if opcao == "1":
+            listar_laboratorios()
+        elif opcao == "2":
+            fazer_e_confirmar_reserva()
+        elif opcao == "3":
+            verificar_disponibilidade()
+        elif opcao == "4":
+            listar_reservas()
+        elif opcao == "5":
+            consultar_reserva()
+        elif opcao == "6":
+            cancelar_reserva()
+        elif opcao == "7":
+            print("\nEncerrando o programa... Até logo!")
+            break
+        else:
+            print("Opção inválida! Por favor, escolha um número de 1 a 7.")
+
+
+# Execução do programa
+if __name__ == "__main__":
+    menu_principal()
